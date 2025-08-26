@@ -1,0 +1,50 @@
+{
+  "name": "@hexlet/code",
+  "version": "1.0.0",
+  "description": "page downloader",
+  "main": "src/pageLoader.js",
+  "type": "module",
+  "scripts": {
+    "debug": "DEBUG=page-loader node bin/pageLoader.js -o /var/tmp https://ru.hexlet.io/courses",
+    "test": "DEBUG=page-loader,axios,nock jest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ivanyas/backend-project-4.git"
+  },
+  "author": "Ivanyas",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ivanyas/backend-project-4/issues"
+  },
+  "bin": {
+    "page-loader": "bin/pageLoader.js"
+  },
+  "homepage": "https://github.com/Ivanyas/backend-project-4#readme",
+  "eslintConfig": {
+    "extends": "./eslint.config.js"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "axios-debug-log": "^1.0.0",
+    "cheerio": "^1.1.2",
+    "commander": "^14.0.0",
+    "debug": "^4.4.1",
+    "fs": "^0.0.1-security",
+    "jest": "^29.7.0",
+    "listr": "^0.14.3",
+    "lodash": "^4.17.21",
+    "nock": "^14.0.10",
+    "path": "^0.12.7",
+    "prettier": "^3.6.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "eslint": "^9.34.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jest": "^28.14.0",
+    "globals": "^16.3.0"
+  }
+}
