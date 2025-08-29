@@ -8,6 +8,7 @@ PageLoader – утилита командной строки, которая с
 Утилита скачивает ресурсы параллельно и показывает прогресс по каждому ресурсу в терминале.
 
 Установка: git clone git@github.com:Ivanyas/backend-project-4.git
+
 make install
 
 https://asciinema.org/a/rAoZXTrDGkcPqI6VBIu8bSbvn
