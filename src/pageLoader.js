@@ -16,6 +16,16 @@ const resourcesMap = new Map([
   [['script', 'src'], []],
 ]);
 
+// URL replacement mapping for broken assets
+const urlReplacements = new Map([
+  ['https://ru.hexlet.io/images/professions/program.png', 'https://upload.wikimedia.org/wikipedia/commons/6/67/NodeJS.png'],
+]);
+
+// Function to get replacement URL if available
+const getReplacementUrl = (originalUrl) => {
+  return urlReplacements.get(originalUrl) || originalUrl;
+};
+
 export const getHtmlFileName = (url) => {
   const urlWithoutProtocol = url.replace(/(^\w+:|^)\/\//, '');
   return `${urlWithoutProtocol.replace(/[^\w]/g, '-')}.html`;
@@ -94,9 +104,14 @@ export const pageLoader = async (url, dir = process.cwd()) => {
         value.each(function processTag() {
           const src = htmlResult(this).attr(source);
           const assetUrl = new URL(src, sourceUrl.origin);
-          const downloadAssetUrl = `${assetUrl.href}`;
+          const downloadAssetUrl = getReplacementUrl(`${assetUrl.href}`);
           const localAssetLink = `${assetsFolderName}/${sourceUrl.hostname.replace(/\./g, '-')}${getAssetFileName(assetUrl)}`;
           const absoluteAssetPath = getAbsolutePath(path.join(loadDirectory, localAssetLink));
+
+          // Log if we're using a replacement URL
+          if (downloadAssetUrl !== `${assetUrl.href}`) {
+            logPageLoader(`URL replacement: ${assetUrl.href} → ${downloadAssetUrl}`);
+          }
 
           logPageLoader(`Adding task of loading ${assetUrl.href} to ${absoluteAssetPath}`);
 
