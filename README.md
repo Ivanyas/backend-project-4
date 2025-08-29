@@ -11,4 +11,4 @@ PageLoader – утилита командной строки, которая с
 
 make install
 
-https://asciinema.org/a/rAoZXTrDGkcPqI6VBIu8bSbvn
+https://asciinema.org/a/4Up3bM1Bny4fc2SDT6v2UhZL5
