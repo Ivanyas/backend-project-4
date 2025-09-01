@@ -80,8 +80,15 @@ export const pageLoader = async (url, dir = process.cwd()) => {
       });
     })
     .catch((e) => {
-      if (e.response.status !== 200) {
+      if (e.response) {
+        // HTTP error response received
         throw new Error(`Request ${url} failed, status code: ${e.response.status}`);
+      } else if (e.code) {
+        // Network/system error (e.g., ECONNREFUSED, ENOTFOUND)
+        throw new Error(`Request ${url} failed: ${e.code}`);
+      } else {
+        // Other types of errors
+        throw new Error(`Request ${url} failed: ${e.message}`);
       }
     })
     .then(() => fs.opendir(loadDirectory)
