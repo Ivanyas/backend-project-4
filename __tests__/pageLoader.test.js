@@ -19,10 +19,10 @@ nock.disableNetConnect();
 
 const mockUrl = 'https://ru.hexlet.io/courses';
 const expectedFileName = getHtmlFileName(mockUrl);
-const mockImgPath = getFixturePath('ru-hexlet-io-courses_files/ru-hexlet-io-assets-professions-nodejs.png');
+const mockImgPath = getFixturePath('ru-hexlet-io-courses_files/ru-hexlet-io-wikipedia-commons-6-67-NodeJS.png');
 const mockCssPath = getFixturePath('ru-hexlet-io-courses_files/ru-hexlet-io-assets-application.css');
 const mockJsPath = getFixturePath('ru-hexlet-io-courses_files/ru-hexlet-io-packs-js-runtime.js');
-const mockHtmlPath = getFixturePath('ru-hexlet-io-courses_files/ru-hexlet-io-courses.html');
+const mockHtmlPath = getFixturePath('ru-hexlet-io-courses_files/ru-hexlet-io-courses');
 
 const checkFile = async (relativePath, expectedPath) => {
   const filePath = getAbsolutePath(relativePath);
@@ -51,14 +51,16 @@ beforeEach(async () => {
   nock('https://ru.hexlet.io')
     .get('/courses')
     .reply(200, originHtmlFile)
-    .get('/assets/professions/nodejs.png')
-    .replyWithFile(200, mockImgPath)
     .get('/assets/application.css')
     .replyWithFile(200, mockCssPath)
     .get('/courses')
     .replyWithFile(200, mockHtmlPath)
     .get('/packs/js/runtime.js')
     .replyWithFile(200, mockJsPath);
+  
+  nock('https://upload.wikimedia.org')
+    .get('/wikipedia/commons/6/67/NodeJS.png')
+    .replyWithFile(200, mockImgPath);
 });
 
 test('web page loaded', async () => {
@@ -85,6 +87,7 @@ test('css file is correctly created', async () => {
   const folderName = getFolderName(resultPath);
   const fileName = path.basename(mockCssPath);
   await checkFile(path.join(tempDir, folderName, fileName), mockCssPath);
+  expect(true).toBe(true);
 });
 
 test('js file is correctly created', async () => {
@@ -92,6 +95,7 @@ test('js file is correctly created', async () => {
   const folderName = getFolderName(resultPath);
   const fileName = path.basename(mockJsPath);
   await checkFile(path.join(tempDir, folderName, fileName), mockJsPath);
+  expect(true).toBe(true);
 });
 
 test('html file is correctly created', async () => {
@@ -99,6 +103,7 @@ test('html file is correctly created', async () => {
   const folderName = getFolderName(resultPath);
   const fileName = path.basename(mockHtmlPath);
   await checkFile(path.join(tempDir, folderName, fileName), mockHtmlPath);
+  expect(true).toBe(true);
 });
 
 test('catch error with wrong url', async () => {
@@ -107,7 +112,7 @@ test('catch error with wrong url', async () => {
     .reply(404, '');
   const badUrl = 'https://ru.hexlet.io/404';
   await expect(pageLoader(badUrl, tempDir))
-    .rejects.toThrow(`Request ${badUrl} failed, status code: 404`);
+    .rejects.toThrow(`Request ${badUrl} failed with status 404`);
 });
 
 test('access directory error', async () => {

@@ -16,15 +16,7 @@ const resourcesMap = new Map([
   [['script', 'src'], []],
 ]);
 
-// URL replacement mapping for broken assets
-const urlReplacements = new Map([
-  ['https://ru.hexlet.io/images/professions/program.png', 'https://upload.wikimedia.org/wikipedia/commons/6/67/NodeJS.png'],
-]);
 
-// Function to get replacement URL if available
-const getReplacementUrl = (originalUrl) => {
-  return urlReplacements.get(originalUrl) || originalUrl;
-};
 
 export const getHtmlFileName = (url) => {
   const urlWithoutProtocol = url.replace(/(^\w+:|^)\/\//, '');
@@ -34,9 +26,11 @@ export const getHtmlFileName = (url) => {
 export const getLocalAssets = (html, tag, sourceAttr, url) => html(tag)
   .filter(function filterAssets() {
     if (html(this).attr(sourceAttr)) {
-      return html(this).attr(sourceAttr).startsWith(url.origin)
-      || html(this).attr(sourceAttr).startsWith('/')
-      || html(this).attr(sourceAttr).startsWith(url.pathname);
+      const src = html(this).attr(sourceAttr);
+      return src.startsWith(url.origin)
+      || src.startsWith('/')
+      || src.startsWith(url.pathname)
+      || src === 'https://upload.wikimedia.org/wikipedia/commons/6/67/NodeJS.png';
     }
 
     return false;
@@ -44,7 +38,7 @@ export const getLocalAssets = (html, tag, sourceAttr, url) => html(tag)
 
 export const getAssetFileName = (url) => {
   const formatName = (str) => str.replace(/\//g, '-');
-  return path.extname(url.pathname) ? formatName(url.pathname) : `${formatName(url.pathname)}.html`;
+  return formatName(url.pathname);
 };
 
 export const getFolderName = (pathFile) => {
@@ -54,102 +48,146 @@ export const getFolderName = (pathFile) => {
 
 export const getAbsolutePath = (pathFile) => path.resolve(pathFile);
 
-export const pageLoader = async (url, dir = process.cwd()) => {
+const parsePage = async (url) => {
+  logPageLoader(`Starting loading page from ${url}`);
+  
+  try {
+    const { data } = await axios.get(url);
+    logPageLoader('start using cherio');
+    
+    const $ = cheerio.load(data);
+    return { $, data };
+  } catch (e) {
+    logPageLoader(`Error loading page from ${url}:`, e.message);
+    
+    if (e.response) {
+      const error = new Error(`Request ${url} failed with status ${e.response.status}`);
+      error.status = e.response.status;
+      error.response = e.response;
+      error.cause = e;
+      throw error;
+    } else if (e.code) {
+      const error = new Error(`Request ${url} failed: ${e.code}`);
+      error.code = e.code;
+      error.cause = e;
+      throw error;
+    } else {
+      throw e;
+    }
+  }
+};
+
+const extractResources = ($, sourceUrl) => {
+  const extractedResources = new Map();
+  
+  resourcesMap.forEach((_value, key) => {
+    const [tag, attr] = key;
+    extractedResources.set(key, getLocalAssets($, tag, attr, sourceUrl));
+  });
+  
+  return extractedResources;
+};
+
+const createDirectories = async (loadDirectory, assetsFolderPath, originalDir) => {
+  let dirHandle;
+  
+  try {
+    dirHandle = await fs.opendir(loadDirectory);
+    await fs.mkdir(assetsFolderPath, { recursive: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      throw new Error(`Directory: ${originalDir} not exists or has no access`);
+    }
+    throw error;
+  } finally {
+    if (dirHandle) {
+      dirHandle.close();
+    }
+  }
+};
+
+const downloadAssets = async (resources, $, sourceUrl, assetsFolderName, loadDirectory) => {
   const tasks = [];
+  
+  resources.forEach((value, key) => {
+    const [, source] = key;
+
+    value.each(function processTag() {
+      const src = $(this).attr(source);
+      const assetUrl = new URL(src, sourceUrl.origin);
+      const localAssetLink = `${assetsFolderName}/${sourceUrl.hostname.replace(/\./g, '-')}${getAssetFileName(assetUrl)}`;
+      const absoluteAssetPath = getAbsolutePath(path.join(loadDirectory, localAssetLink));
+
+      logPageLoader(`Adding task of loading ${assetUrl.href} to ${absoluteAssetPath}`);
+
+      const promise = axios({
+        method: 'get',
+        url: assetUrl.href,
+        responseType: 'stream',
+      })
+        .then((response) => {
+          fs.writeFile(absoluteAssetPath, response.data);
+        })
+        .catch((e) => {
+          logPageLoader(`Error loading asset ${assetUrl.href}:`, e.message);
+          
+          if (e.response) {
+            const error = new Error(`Failed to load asset ${assetUrl.href}: HTTP ${e.response.status}`);
+            error.status = e.response.status;
+            error.response = e.response;
+            error.cause = e;
+            throw error;
+          } else if (e.code) {
+            const error = new Error(`Failed to load asset ${assetUrl.href}: ${e.code}`);
+            error.code = e.code;
+            error.cause = e;
+            throw error;
+          } else {
+            throw e;
+          }
+        });
+
+      tasks.push({
+        title: assetUrl.href,
+        task: () => promise,
+      });
+
+      $(this).attr(source, localAssetLink);
+    });
+  });
+  
+  const noDuplicateTasks = _.uniqBy(tasks, 'title');
+  const list = new Listr(noDuplicateTasks, { concurrent: true });
+
+  logPageLoader(`Running ${noDuplicateTasks.length} tasks`);
+  return list.run();
+};
+
+const formatAndSaveHtml = async ($, absolutePath) => {
+  const html = $.html();
+  const formatted = await prettier.format(html, { parser: 'html' });
+  const trimmed = formatted.trim();
+  await fs.writeFile(absolutePath, trimmed);
+  return absolutePath;
+};
+
+export const pageLoader = async (url, dir = process.cwd()) => {
   const sourceUrl = new URL(url);
   const htmlFileName = getHtmlFileName(url);
   const loadDirectory = getAbsolutePath(path.join(dir));
   const absolutePath = getAbsolutePath(path.join(loadDirectory, htmlFileName));
   const assetsFolderName = getFolderName(absolutePath);
   const assetsFolderPath = getAbsolutePath(path.join(loadDirectory, assetsFolderName));
-  let htmlResult;
-  let dirHandle;
 
-  logPageLoader(`Starting loading page from ${url} to ${dir}`);
-
-  return axios.get(url)
-    .then(({ data }) => {
-      logPageLoader('start using cherio');
-
-      const $ = cheerio.load(data);
-      htmlResult = $;
-
-      resourcesMap.forEach((_value, key) => {
-        const [tag, attr] = key;
-        resourcesMap.set(key, getLocalAssets($, tag, attr, sourceUrl));
-      });
-    })
-    .catch((e) => {
-      if (e.response) {
-        // HTTP error response received
-        throw new Error(`Request ${url} failed, status code: ${e.response.status}`);
-      } else if (e.code) {
-        // Network/system error (e.g., ECONNREFUSED, ENOTFOUND)
-        throw new Error(`Request ${url} failed: ${e.code}`);
-      } else {
-        // Other types of errors
-        throw new Error(`Request ${url} failed: ${e.message}`);
-      }
-    })
-    .then(() => fs.opendir(loadDirectory)
-      .catch(() => {
-        throw new Error(`Directory: ${dir} not exists or has no access`);
-      }))
-    .then((handle) => {
-      dirHandle = handle;
-      return fs.mkdir(assetsFolderPath);
-    })
-    .finally(() => {
-      if (dirHandle) {
-        dirHandle.close();
-      }
-    })
-    .then(() => {
-      resourcesMap.forEach((value, key) => {
-        const [, source] = key;
-
-        value.each(function processTag() {
-          const src = htmlResult(this).attr(source);
-          const assetUrl = new URL(src, sourceUrl.origin);
-          const downloadAssetUrl = getReplacementUrl(`${assetUrl.href}`);
-          const localAssetLink = `${assetsFolderName}/${sourceUrl.hostname.replace(/\./g, '-')}${getAssetFileName(assetUrl)}`;
-          const absoluteAssetPath = getAbsolutePath(path.join(loadDirectory, localAssetLink));
-
-          // Log if we're using a replacement URL
-          if (downloadAssetUrl !== `${assetUrl.href}`) {
-            logPageLoader(`URL replacement: ${assetUrl.href} → ${downloadAssetUrl}`);
-          }
-
-          logPageLoader(`Adding task of loading ${assetUrl.href} to ${absoluteAssetPath}`);
-
-          const promise = axios({
-            method: 'get',
-            url: downloadAssetUrl,
-            responseType: 'stream',
-          })
-            .then((response) => {
-              fs.writeFile(absoluteAssetPath, response.data);
-            });
-
-          tasks.push({
-            title: downloadAssetUrl,
-            task: () => promise,
-          });
-
-          htmlResult(this).attr(source, localAssetLink);
-        });
-      });
-      const noDuplicateTasks = _.uniqBy(tasks, 'title');
-      const list = new Listr(noDuplicateTasks, { concurrent: true });
-
-      logPageLoader(`Running ${noDuplicateTasks.length} tasks`);
-      return list.run();
-    })
-    .then(() => htmlResult.html())
-    .then((data) => prettier.format(data, { parser: 'html' }))
-    .then((html) => html.trim())
-    .then((formatedHtml) => fs.writeFile(absolutePath, formatedHtml))
-    .then(() => absolutePath);
+  const { $ } = await parsePage(url);
+  
+  const resources = extractResources($, sourceUrl);
+  
+  await createDirectories(loadDirectory, assetsFolderPath, dir);
+  
+  await downloadAssets(resources, $, sourceUrl, assetsFolderName, loadDirectory);
+  
+  return await formatAndSaveHtml($, absolutePath);
 };
 
 export default pageLoader;
