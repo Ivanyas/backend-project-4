@@ -15,9 +15,9 @@ export default [
       sourceType: 'module',
     },
   },
-  
+
   js.configs.recommended,
-  
+
   {
     files: ['**/*.js'],
     plugins: {
@@ -28,14 +28,11 @@ export default [
       'import/no-unresolved': 'error',
       'import/extensions': ['error', 'ignorePackages', { js: 'always' }],
       'import/prefer-default-export': 'off',
-      
+
       'no-console': 'off',
       'no-unused-disable-directives': 'off',
-      'no-underscore-dangle': [
-        'error',
-        { allow: ['__filename', '__dirname'] },
-      ],
-      
+      'no-underscore-dangle': ['error', { allow: ['__filename', '__dirname'] }],
+
       'jest/no-disabled-tests': 'warn',
       'jest/no-focused-tests': 'error',
       'jest/no-identical-title': 'error',
@@ -43,7 +40,7 @@ export default [
       'jest/no-done-callback': 'error',
     },
   },
-  
+
   {
     files: ['**/*.test.js', '**/__tests__/**/*.js'],
     languageOptions: {

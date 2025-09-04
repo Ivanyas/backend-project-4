@@ -8,7 +8,9 @@
     "debug": "DEBUG=page-loader node bin/pageLoader.js -o /var/tmp https://ru.hexlet.io/courses",
     "test": "DEBUG=page-loader,axios,nock jest",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "repository": {
     "type": "git",
@@ -39,7 +41,6 @@
     "nock": "^14.0.10",
     "os": "^0.1.2",
     "path": "^0.12.7",
-    "prettier": "^3.6.2",
     "url": "^0.11.4"
   },
   "devDependencies": {
@@ -50,6 +51,7 @@
     "eslint-plugin-jest": "^28.14.0",
     "globals": "^16.3.0",
     "jest": "^29.7.0",
-    "nock": "^13.5.6"
+    "nock": "^13.5.6",
+    "prettier": "^3.6.2"
   }
 }

@@ -9,7 +9,11 @@ program
   .description('Page loader utility')
   .version(VERSION, '-V, --version', 'output the current version')
   .helpOption('-h, --help', 'display help for command')
-  .option('-o, --output [dir]', 'output dir (default: "/home/user/current-dir")', process.cwd())
+  .option(
+    '-o, --output [dir]',
+    'output dir (default: "/home/user/current-dir")',
+    process.cwd()
+  )
   .argument('<url>')
   .action((url, options) => {
     pageLoader(url, options.output)
